@@ -5,7 +5,7 @@
   - name: Congratulations!
     debug:
       msg:
-        - "Your Raspi is ready now!"
+        - "Installing Plex mediaserver to you Raspberry PI!"
 
   - name: Update and upgrade apt packages
     apt:
