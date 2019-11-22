@@ -1,0 +1,113 @@
+- hosts: all
+  become: yes
+
+  tasks:
+  - name: Congratulations!
+    debug:
+      msg:
+        - "Your Raspi is ready now!"
+
+  - name: Update and upgrade apt packages
+    apt:
+      upgrade: yes
+      update_cache: yes
+      cache_valid_time: 86400 #One day
+
+  - name: Install apt-transport-https
+    apt:
+      name: apt-transport-https
+      state: present
+
+  - name: Add plex.tv sign key
+    apt_key:
+      url: https://downloads.plex.tv/plex-keys/PlexSign.key
+      state: present
+  
+  - name: Add plex repository to sources list
+    apt_repository:
+      repo: deb https://downloads.plex.tv/repo/deb public main
+      state: present
+      update_cache: yes
+  
+  - name: Install plexmediaserver
+    apt:
+      name: plexmediaserver
+      state: present
+
+  - name: Copy plexmediaserver to /etc/default/
+    copy:
+      src: files/plexmediaserver
+      dest: /etc/default/
+      owner: pi
+      mode: '0644'
+    register: plexmediaserverfile
+
+
+  - name: Restart plexmediaserver
+    shell: systemctl restart plexmediaserver
+    when: plexmediaserverfile.changed
+
+  - name: Reboot a server when if server has changed
+    reboot:
+      msg: 'Rebooting mediaserver now'
+    when: plexmediaserverfile.changed
+
+  - name: Install firewall
+    apt:
+      name: ufw
+      state: present
+
+  - name: Allow SSH
+    ufw:
+      rule: allow
+      port: ssh
+      proto: tcp
+
+  - name: Allow generic HTTP port
+    ufw:
+      rule: allow
+      port: '80'
+
+  - name: Allow plex port
+    ufw:
+      rule: allow
+      port: '32400'
+
+  - name: Install firewall
+    ufw:
+      state: enabled
+
+  - name: Install NTFS support
+    apt:
+      name: ntfs-3g
+      state: present
+
+  - name: Retrieve pi User ID
+    shell: id -u pi
+    register: piuid
+
+  - set_fact:
+      piuid={{ piuid.stdout }}
+
+  - name: Retrieve pi Group ID
+    shell: id -g pi
+    register: piguid
+
+  - set_fact:
+      piguid={{ piguid.stdout }}
+
+  - name: Mount External HDD to server
+    mount:
+      # Backup just in case we screw up
+      backup: yes
+      src: UUID=089A59839A596DE6
+      path: /home/pi/wdpassport
+      fstype: ntfs
+      opts: nofail,uid={{ piuid }},gid={{ piguid }},noatime 0 0
+      state: mounted
+    register: externalhddmount
+
+  - name: Reboot server when external HDD has changed
+    reboot:
+      msg: 'External drive config was updated. Rebooting now...'
+    when: externalhddmount.changed
