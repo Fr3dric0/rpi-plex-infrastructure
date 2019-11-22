@@ -98,15 +98,20 @@
 
   - name: Mount External HDD to server
     mount:
-      # Backup just in case we screw up
+      # Backup just in case we screw up.
+      # Remember to remove old backups, if you run this very frequent
       backup: yes
+      # Point to our drive using its uuid 
+      # Found by calling: `ls -l /dev/disk/by-uuid`
       src: UUID=089A59839A596DE6
       path: /home/pi/wdpassport
       fstype: ntfs
+      # Ensure that the user 'pi' has the ownership of this mount
       opts: nofail,uid={{ piuid }},gid={{ piguid }},noatime 0 0
       state: mounted
     register: externalhddmount
 
+  # To ensure the file mounts itself after a reboot ..do a reboot and check
   - name: Reboot server when external HDD has changed
     reboot:
       msg: 'External drive config was updated. Rebooting now...'
