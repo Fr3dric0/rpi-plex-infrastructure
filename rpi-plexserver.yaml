@@ -42,14 +42,8 @@
       mode: '0644'
     register: plexmediaserverfile
 
-
   - name: Restart plexmediaserver
     shell: systemctl restart plexmediaserver
-    when: plexmediaserverfile.changed
-
-  - name: Reboot a server when if server has changed
-    reboot:
-      msg: 'Rebooting mediaserver now'
     when: plexmediaserverfile.changed
 
   - name: Install firewall
@@ -73,9 +67,33 @@
       rule: allow
       port: '32400'
 
-  - name: Install firewall
+  - name: Enable firewall
     ufw:
       state: enabled
+
+  # Greatly reduce brute force attacks
+  - name: Install fail2ban
+    apt:
+      name: fail2ban
+      state: present
+
+  # Ensure regular security updates are included
+  - name: Install unattended-upgrades
+    apt:
+      name: unattended-upgrades
+      state: present
+
+  - name: Copy unattended-upgrades primary configurations
+    copy:
+      src: files/50unattended-upgrades
+      dest: /etc/apt/apt.conf.d/
+      mode: '0644'
+
+  - name: Copy unattended-upgrades periodic rules
+    copy:
+      src: files/02periodic
+      dest: /etc/apt/apt.conf.d/
+      mode: '0644'
 
   - name: Install NTFS support
     apt:
@@ -111,7 +129,7 @@
       state: mounted
     register: externalhddmount
 
-  # To ensure the file mounts itself after a reboot ..do a reboot and check
+  To ensure the file mounts itself after a reboot ..do a reboot and check
   - name: Reboot server when external HDD has changed
     reboot:
       msg: 'External drive config was updated. Rebooting now...'
